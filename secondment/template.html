@@ -1,0 +1,106 @@
+{% load results_tags %}
+
+<div class="row justify-content-end pt-2">
+    {% if analysis.total_reads > 0 and analysis.nanoplot_report.name != '' %}
+    <div class="col-auto"><a href="{% url 'nanoplot' analysis.id %}" target="_blank"><i class="far fa-file-code"></i> View NanoPlot report</a></div>
+    {% else %}
+    <div class="col-auto"><font color="#768692"><i class="far fa-file-code"></i> View NanoPlot report</font></div>
+    {% endif %}
+    <div class="col-auto"><a href="{% url 'download' analysis.id %}"><i class="far fa-file-pdf"></i> Download results</a></div>
+</div>
+
+<div class="row">
+    <div class="col-md-12"><h5>Fastq Statistics:</h5></div>
+    <div class="col-md-5">
+        <table class="table table-bordered table-striped table-sm">
+            <tr><th>Total reads</th><td>{{ analysis.total_reads|intcomma }}</td></tr>
+            <tr><th>Analysed reads (Q-score >7)</th><td>{{ analysis.analysed_reads|intcomma }} ({{ analysis.analysed_reads|percentage_of:analysis.total_reads }}% of total)</td></tr>
+            <tr><th>Mean read length</th><td>{{ analysis.mean_read_length|floatcomma }}</td></tr>
+            <tr><th>Mean Q-score</th><td>{{ analysis.mean_qscore|floatformat:2 }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="row pt-2 pb-2">
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <font size="5">Seqmatch Results</font>
+                <hr/>
+                <p>
+                    <b>Reads classified by Seqmatch:</b> {{ analysis.sqm_result.classified_reads|intcomma }} ({{ analysis.sqm_result.classified_reads|percentage_of:analysis.analysed_reads }}% of analysed)
+                </p>
+        	<div id="sqm-container-{{ time }}" style="width: 100%; height: {{ analysis.sqm_result.matches.all|graph_height }}px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <font size="5">Centrifuge Results</font>
+                <hr/>
+                <p>
+                    <b>Reads classified by Centrifuge:</b> {{ analysis.cfg_result.classified_reads|intcomma }} ({{ analysis.cfg_result.classified_reads|percentage_of:analysis.analysed_reads }}% of analysed)
+                </p>
+                <div id="cfg-container-{{ time }}" style="width: 100%; height: {{ analysis.cfg_result.matches.all|graph_height }}px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    anychart.onDocumentReady(function() {
+        // set the data
+        var row_data = []
+        {% for match in analysis.sqm_result.matches.all %}
+        row_data.push(["{{ match.match }} ({{ match.read_count|intcomma }})", {{ match.read_count|percentage_of:analysis.sqm_result.classified_reads }}]);
+        {% endfor %}
+        var data = {
+            header: ["#", "Percentage"],
+            rows: row_data
+        };
+        // create the chart
+        var chart = anychart.bar();
+        // add data
+        chart.data(data);
+        chart.labels(true);
+        chart.labels().format(function(){
+            return(this.value + "%");
+        });
+        chart.yScale().minimum(0);
+        chart.yScale().maximum(100);
+        chart.title("Results >1% of classified reads");
+        // draw
+        chart.container("sqm-container-{{ time }}");
+        chart.draw();
+    });
+</script>
+
+<script>
+    anychart.onDocumentReady(function() {
+        // set the data
+        var row_data = []
+        {% for match in analysis.cfg_result.matches.all %}
+        row_data.push(["{{ match.match }}, {{ match.rank }} ({{ match.read_count|intcomma }})", {{ match.read_count|percentage_of:analysis.cfg_result.classified_reads }}]);
+        {% endfor %}
+        var data = {
+            header: ["#", "Percentage"],
+            rows: row_data
+        };
+        // create the chart
+        var chart = anychart.bar();
+        // add data
+        chart.data(data);
+        chart.labels(true);
+        chart.labels().format(function(){
+            return(this.value + "%");
+        });
+        chart.yScale().minimum(0);
+        chart.yScale().maximum(100);
+        chart.title("Results >1% of classified reads");
+        // draw
+        chart.container("cfg-container-{{ time }}");
+        chart.draw();
+    });
+</script>
